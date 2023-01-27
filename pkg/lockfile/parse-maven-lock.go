@@ -55,11 +55,16 @@ func (mld MavenLockDependency) ResolveVersion(lockfile MavenLockFile) string {
 	return mld.parseResolvedVersion(version)
 }
 
-type MavenLockFile struct {
-	XMLName      xml.Name              `xml:"project"`
-	ModelVersion string                `xml:"modelVersion"`
-	Properties   MavenLockProperties   `xml:"properties"`
+type DependencyManagement struct {
 	Dependencies []MavenLockDependency `xml:"dependencies>dependency"`
+}
+
+type MavenLockFile struct {
+	XMLName              xml.Name              `xml:"project"`
+	ModelVersion         string                `xml:"modelVersion"`
+	Properties           MavenLockProperties   `xml:"properties"`
+	Dependencies         []MavenLockDependency `xml:"dependencies>dependency"`
+	DependencyManagement DependencyManagement  `xml:"dependencyManagement"`
 }
 
 const MavenEcosystem Ecosystem = "Maven"
@@ -107,9 +112,9 @@ func ParseMavenLock(pathToLockfile string) ([]PackageDetails, error) {
 		return []PackageDetails{}, fmt.Errorf("could not parse %s: %w", pathToLockfile, err)
 	}
 
-	packages := make([]PackageDetails, 0, len(parsedLockfile.Dependencies))
+	packages := make([]PackageDetails, 0, len(parsedLockfile.Dependencies)+len(parsedLockfile.DependencyManagement.Dependencies))
 
-	for _, lockPackage := range parsedLockfile.Dependencies {
+	for _, lockPackage := range append(parsedLockfile.Dependencies, parsedLockfile.DependencyManagement.Dependencies...) {
 		packages = append(packages, PackageDetails{
 			Name:      lockPackage.GroupID + ":" + lockPackage.ArtifactID,
 			Version:   lockPackage.ResolveVersion(*parsedLockfile),
